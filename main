@@ -43,7 +43,8 @@
 //**************************************************/
 // Variables globales
 //**************************************************/
-uint8_t valTemperatura;
+float lecturaTemp;
+int digits[3];
 
 portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
@@ -67,11 +68,15 @@ void IRAM_ATTR BTN1_ISR() {
 }
 
 float getTemperatura(uint8_t);
+void numbersToDisplay(float);
 
 //**************************************************/
 // Función de configuración
 //**************************************************/
 void setup() {
+
+  pinMode(sensor, INPUT);
+
   configurarDisplay(sA,sB,sC,sD,sE,sF,sG,sP);
   configurarPWM(canalPWM, freqPWM, resPWM, servo);
   
@@ -85,17 +90,59 @@ void setup() {
 // Loop principal
 //**************************************************/
 void loop() {
-  float lectura = getTemperatura(sensor);
-  Serial.printf("%f°\n", lectura);
+  float lecturaTemp = getTemperatura(sensor);
+  Serial.printf("%f°\n", lecturaTemp);
   delay(1000);
+
+  // Usar display
+  numbersToDisplay(lecturaTemp);
+
+  digitalWrite(disp1, HIGH);
+  digitalWrite(disp2, LOW);
+  digitalWrite(disp3, LOW);
+
+  desplegarDisplay(digits[0]);
+  desplegarPunto(0);
+  delay(5);
+
+  digitalWrite(disp1, LOW);
+  digitalWrite(disp2, HIGH);
+  digitalWrite(disp3, LOW);
+
+  desplegarDisplay(digits[1]);
+  desplegarPunto(1);
+  delay(5);
+
+  digitalWrite(disp1, LOW);
+  digitalWrite(disp2, LOW);
+  digitalWrite(disp3, HIGH);
+
+  desplegarDisplay(digits[2]);
+  desplegarPunto(0);
+  delay(5);
+
 }
 
 //**************************************************/
 // Definición de funciones
 //**************************************************/
 float getTemperatura(uint8_t analogPin){
-  int valSensor = analogRead(analogPin);
+  uint16_t valSensor = analogRead(analogPin);
   float voltaje = valSensor * 3.3 / 4096;
   float temperatura = voltaje/0.01;
   return temperatura;
+}
+
+// Función para devolver un array con los números que los displays tienen que mostrar
+void numbersToDisplay(float valorTemp){
+  // Deshacerse del punto decimal y quedarse con un número que contenga los 3 dígitos funcinales para los displays
+  int intTemp = (int)(valorTemp*10);
+  // Convertir intTemp en string
+  String stringTemp = String(intTemp);
+    
+  // Extraer dígitos y guardarlos en un array de enteros
+  for (int i = 0; i < stringTemp.length(); i++){
+    char c = stringTemp[i];
+    digits[i] = c - '0';
+  }
 }
