@@ -1,1 +1,58 @@
+// Universidad del Valle de Guatemala
+// B3023 Digital 2
+// Emilio Soria, 221170
+// Proyecto 1 - Sensor de Temperatura
+// Micro: ESP32 DEV Kit
+// Este programa integra un sistema de monitoreo de temperatura
 
+//**************************************************/
+// Importación de librerías
+//**************************************************/
+#include <Arduino.h>
+#include "display_7segmentos.h"
+#include <PWM.h>
+
+//**************************************************/
+// Definiciones
+//**************************************************/
+#define sensor 36
+#define button 39
+#define rgb 23
+#define servo 22
+#define disp1 14
+#define disp2 25
+#define disp3 33
+#define sA 27
+#define sB 32
+#define sC 19
+#define sD 17
+#define sE 16
+#define sF 26
+#define sG 21
+#define sP 18
+
+//**************************************************/
+// Variables globales
+//**************************************************/
+
+//**************************************************/
+// Prototipos de función
+//**************************************************/
+
+//**************************************************/
+// Función de configuración
+//**************************************************/
+void setup() {
+
+}
+
+//**************************************************/
+// Loop principal
+//**************************************************/
+void loop() {
+
+}
+
+//**************************************************/
+// Definición de funciones
+//**************************************************/
