@@ -9,14 +9,16 @@
 // Importación de librerías
 //**************************************************/
 #include <Arduino.h>
+#include <stdint.h>
 #include "display_7segmentos.h"
-#include <PWM.h>
+#include "PWM.h"
+#include "config.h"
 
 //**************************************************/
 // Definiciones
 //**************************************************/
 #define sensor 36
-#define button 39
+#define buttonPin 39
 #define rgb 23
 #define servo 22
 #define disp1 14
@@ -31,19 +33,48 @@
 #define sG 21
 #define sP 18
 
+// Paso 2: Escoger el canal PWM
+#define canalPWM 9
+// Paso 3: Definir frecuencia de la señal PWM (Hz)
+#define freqPWM 50
+// Paso 4: Definir resolución del duty cycle (1-16 bits)
+#define resPWM 10 // 10 bits
+
 //**************************************************/
 // Variables globales
 //**************************************************/
+portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
+
+struct Button {
+    const uint8_t PIN;
+    volatile uint8_t numberKeyPresses;
+    bool pressed;
+};
+
+Button button1 = {buttonPin, 0, false};
 
 //**************************************************/
 // Prototipos de función
 //**************************************************/
+// Paso 1: Definir lo que ocurre durante la interrupción (ISR)
+void IRAM_ATTR BTN1_ISR() {
+  portENTER_CRITICAL_ISR(&mux);
+    button1.numberKeyPresses++;
+    button1.pressed = true;
+  portEXIT_CRITICAL_ISR(&mux);
+}
 
 //**************************************************/
 // Función de configuración
 //**************************************************/
 void setup() {
-
+  configurarDisplay(sA,sB,sC,sD,sE,sF,sG,sP);
+  configurarPWM(canalPWM, freqPWM, resPWM, servo);
+  
+  Serial.begin(115200);
+  // Paso 2: Adjuntar interrupción al pin
+  pinMode(button1.PIN, INPUT_PULLUP);
+  attachInterrupt(button1.PIN, BTN1_ISR, FALLING);
 }
 
 //**************************************************/
