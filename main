@@ -43,6 +43,8 @@
 //**************************************************/
 // Variables globales
 //**************************************************/
+uint8_t valTemperatura;
+
 portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
 struct Button {
@@ -64,6 +66,8 @@ void IRAM_ATTR BTN1_ISR() {
   portEXIT_CRITICAL_ISR(&mux);
 }
 
+float getTemperatura(uint8_t);
+
 //**************************************************/
 // Función de configuración
 //**************************************************/
@@ -81,9 +85,17 @@ void setup() {
 // Loop principal
 //**************************************************/
 void loop() {
-
+  float lectura = getTemperatura(sensor);
+  Serial.printf("%f°\n", lectura);
+  delay(1000);
 }
 
 //**************************************************/
 // Definición de funciones
 //**************************************************/
+float getTemperatura(uint8_t analogPin){
+  int valSensor = analogRead(analogPin);
+  float voltaje = valSensor * 3.3 / 4096;
+  float temperatura = voltaje/0.01;
+  return temperatura;
+}
