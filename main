@@ -3,7 +3,9 @@
 // Emilio Soria, 221170
 // Proyecto 1 - Sensor de Temperatura
 // Micro: ESP32 DEV Kit
-// Este programa integra un sistema de monitoreo de temperatura
+/*Este programa integra un sistema de monitoreo de temperatura.
+La lectura del sensor se realiza accionando un botón.
+El valor de la temperatura se muestra en un canal de AdafruitIO.*/
 
 //**************************************************/
 // Importación de librerías
@@ -19,7 +21,9 @@
 //**************************************************/
 #define sensor 36
 #define buttonPin 39
-#define rgb 23
+#define rgbR 23
+#define rgbG 2
+#define rgbB 15
 #define servo 22
 #define disp1 14
 #define disp2 25
@@ -34,7 +38,12 @@
 #define sP 18
 
 // Paso 2: Escoger el canal PWM
-#define canalPWM 9
+#define canalPWMservo 8
+#define canalPWMr 9
+#define canalPWMg 10
+#define canalPWMb 11
+
+
 // Paso 3: Definir frecuencia de la señal PWM (Hz)
 #define freqPWM 50
 // Paso 4: Definir resolución del duty cycle (1-16 bits)
@@ -43,7 +52,7 @@
 //**************************************************/
 // Variables globales
 //**************************************************/
-float lecturaTemp;
+float lecturaTemp = 00.0;
 int digits[3];
 
 portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
@@ -55,6 +64,9 @@ struct Button {
 };
 
 Button button1 = {buttonPin, 0, false};
+
+// set up the 'temperatura' feed
+AdafruitIO_Feed *tempCanal = io.feed("canalTemperatura");
 
 //**************************************************/
 // Prototipos de función
@@ -75,24 +87,82 @@ void numbersToDisplay(float);
 //**************************************************/
 void setup() {
 
+  Serial.begin(115200);
+
   pinMode(sensor, INPUT);
+  pinMode(buttonPin, INPUT_PULLUP);
 
   configurarDisplay(sA,sB,sC,sD,sE,sF,sG,sP);
-  configurarPWM(canalPWM, freqPWM, resPWM, servo);
+
+  configurarPWM(canalPWMservo, freqPWM, resPWM, servo);
+  configurarPWM(canalPWMr, freqPWM, resPWM, rgbR);
+  configurarPWM(canalPWMg, freqPWM, resPWM, rgbG);
+  configurarPWM(canalPWMb, freqPWM, resPWM, rgbB);
   
-  Serial.begin(115200);
-  // Paso 2: Adjuntar interrupción al pin
+  // Adjuntar interrupción al pin
   pinMode(button1.PIN, INPUT_PULLUP);
   attachInterrupt(button1.PIN, BTN1_ISR, FALLING);
+
+  // wait for serial monitor to open
+  while(! Serial);
+
+  Serial.print("Connecting to Adafruit IO");
+
+  // connect to io.adafruit.com
+  io.connect();
+
+  // wait for a connection
+  while(io.status() < AIO_CONNECTED) {
+    Serial.print(".");
+    delay(500);
+  }
+
+  // we are connected
+  Serial.println();
+  Serial.println(io.statusText());
+
 }
 
 //**************************************************/
 // Loop principal
 //**************************************************/
 void loop() {
-  float lecturaTemp = getTemperatura(sensor);
-  Serial.printf("%f°\n", lecturaTemp);
-  delay(1000);
+
+  // io.run(); is required for all sketches.
+  // it should always be present at the top of your loop
+  // function. it keeps the client connected to
+  // io.adafruit.com, and processes any incoming data.
+  io.run();
+
+  if (button1.pressed){
+    float lecturaTemp = getTemperatura(sensor);
+    /*Serial.printf("%f°\n", lecturaTemp);
+    delay(1000);*/
+
+  Serial.print("sending -> ");
+  Serial.println(lecturaTemp);
+  tempCanal->save(lecturaTemp);
+
+  button1.pressed == false;
+  }
+
+  // Controlar RGB y servo
+  if (lecturaTemp > 69.9){
+    ledcWrite(canalPWMr, 255);
+    ledcWrite(canalPWMg, 0);
+    ledcWrite(canalPWMb, 0);
+    ledcWrite(canalPWMservo, 51);
+  } if (lecturaTemp < 33.3){
+    ledcWrite(canalPWMr, 0);
+    ledcWrite(canalPWMg, 255);
+    ledcWrite(canalPWMb, 0);
+    ledcWrite(canalPWMservo, 77);
+  } else{
+    ledcWrite(canalPWMr, 255);
+    ledcWrite(canalPWMg, 255);
+    ledcWrite(canalPWMb, 0);
+    ledcWrite(canalPWMservo, 102);
+  }
 
   // Usar display
   numbersToDisplay(lecturaTemp);
@@ -137,10 +207,10 @@ float getTemperatura(uint8_t analogPin){
 void numbersToDisplay(float valorTemp){
   // Deshacerse del punto decimal y quedarse con un número que contenga los 3 dígitos funcinales para los displays
   int intTemp = (int)(valorTemp*10);
-  // Convertir intTemp en string
+  // Convertir "intTemp" en string
   String stringTemp = String(intTemp);
     
-  // Extraer dígitos y guardarlos en un array de enteros
+  // Extraer dígitos y guardarlos en el array de enteros "digits"
   for (int i = 0; i < stringTemp.length(); i++){
     char c = stringTemp[i];
     digits[i] = c - '0';
