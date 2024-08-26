@@ -20,7 +20,7 @@ El valor de la temperatura se muestra en un canal de AdafruitIO.*/
 // Definiciones
 //**************************************************/
 #define sensor 36
-#define buttonPin 39
+#define buttonPin 13
 #define rgbR 23
 #define rgbG 2
 #define rgbB 15
@@ -37,33 +37,34 @@ El valor de la temperatura se muestra en un canal de AdafruitIO.*/
 #define sG 21
 #define sP 18
 
-// Paso 2: Escoger el canal PWM
+// Escoger canales PWM
 #define canalPWMservo 8
 #define canalPWMr 9
 #define canalPWMg 10
 #define canalPWMb 11
 
 
-// Paso 3: Definir frecuencia de la señal PWM (Hz)
+// Definir frecuencia de la señal PWM (Hz)
 #define freqPWM 50
-// Paso 4: Definir resolución del duty cycle (1-16 bits)
+// Definir resolución del duty cycle (1-16 bits)
 #define resPWM 10 // 10 bits
 
 //**************************************************/
 // Variables globales
 //**************************************************/
 float lecturaTemp = 00.0;
-int digits[3];
+int digits[3] = {2, 5, 4};
+/*unsigned long t_boton = 0, t_ultimo_boton = 0;
+bool medir = false;*/
 
 portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
 struct Button {
     const uint8_t PIN;
-    volatile uint8_t numberKeyPresses;
-    bool pressed;
+    volatile bool pressed;
 };
 
-Button button1 = {buttonPin, 0, false};
+Button button1 = {buttonPin, true};
 
 // set up the 'temperatura' feed
 AdafruitIO_Feed *tempCanal = io.feed("canalTemperatura");
@@ -71,12 +72,17 @@ AdafruitIO_Feed *tempCanal = io.feed("canalTemperatura");
 //**************************************************/
 // Prototipos de función
 //**************************************************/
-// Paso 1: Definir lo que ocurre durante la interrupción (ISR)
+// Definir lo que ocurre durante la interrupción (ISR)
 void IRAM_ATTR BTN1_ISR() {
   portENTER_CRITICAL_ISR(&mux);
-    button1.numberKeyPresses++;
     button1.pressed = true;
   portEXIT_CRITICAL_ISR(&mux);
+  /*t_boton = millis();
+  if (t_boton - t_ultimo_boton > 250) {
+    t_ultimo_boton = t_boton;
+    Serial.println("rhush");
+    medir = true;
+  }*/
 }
 
 float getTemperatura(uint8_t);
@@ -93,6 +99,9 @@ void setup() {
   pinMode(buttonPin, INPUT_PULLUP);
 
   configurarDisplay(sA,sB,sC,sD,sE,sF,sG,sP);
+  pinMode(disp1, OUTPUT);
+  pinMode(disp2, OUTPUT);
+  pinMode(disp3, OUTPUT);
 
   configurarPWM(canalPWMservo, freqPWM, resPWM, servo);
   configurarPWM(canalPWMr, freqPWM, resPWM, rgbR);
@@ -100,8 +109,7 @@ void setup() {
   configurarPWM(canalPWMb, freqPWM, resPWM, rgbB);
   
   // Adjuntar interrupción al pin
-  pinMode(button1.PIN, INPUT_PULLUP);
-  attachInterrupt(button1.PIN, BTN1_ISR, FALLING);
+  attachInterrupt(buttonPin, BTN1_ISR, FALLING);
 
   // wait for serial monitor to open
   while(! Serial);
@@ -127,23 +135,20 @@ void setup() {
 // Loop principal
 //**************************************************/
 void loop() {
-
-  // io.run(); is required for all sketches.
-  // it should always be present at the top of your loop
-  // function. it keeps the client connected to
-  // io.adafruit.com, and processes any incoming data.
-  io.run();
-
+  
   if (button1.pressed){
+
+    // io.run(); is required for all sketches.
+    // it should always be present at the top of your loop
+    // function. it keeps the client connected to
+    // io.adafruit.com, and processes any incoming data.
+    io.run();
     float lecturaTemp = getTemperatura(sensor);
-    /*Serial.printf("%f°\n", lecturaTemp);
-    delay(1000);*/
-
-  Serial.print("sending -> ");
-  Serial.println(lecturaTemp);
-  tempCanal->save(lecturaTemp);
-
-  button1.pressed == false;
+    
+    Serial.print("sending -> ");
+    Serial.println(lecturaTemp);
+    tempCanal->save(lecturaTemp);
+    // button1.pressed = false;
   }
 
   // Controlar RGB y servo
@@ -152,12 +157,14 @@ void loop() {
     ledcWrite(canalPWMg, 0);
     ledcWrite(canalPWMb, 0);
     ledcWrite(canalPWMservo, 51);
-  } if (lecturaTemp < 33.3){
+  } 
+  if (lecturaTemp < 33.3){
     ledcWrite(canalPWMr, 0);
     ledcWrite(canalPWMg, 255);
     ledcWrite(canalPWMb, 0);
     ledcWrite(canalPWMservo, 77);
-  } else{
+  }
+  else{
     ledcWrite(canalPWMr, 255);
     ledcWrite(canalPWMg, 255);
     ledcWrite(canalPWMb, 0);
@@ -197,13 +204,12 @@ void loop() {
 // Definición de funciones
 //**************************************************/
 float getTemperatura(uint8_t analogPin){
-  uint16_t valSensor = analogRead(analogPin);
-  float voltaje = valSensor * 3.3 / 4096;
-  float temperatura = voltaje/0.01;
+  float valSensor = analogReadMilliVolts(analogPin);
+  float temperatura = valSensor/10;
   return temperatura;
 }
 
-// Función para devolver un array con los números que los displays tienen que mostrar
+// Función para guardar en un array los números que los displays tienen que mostrar
 void numbersToDisplay(float valorTemp){
   // Deshacerse del punto decimal y quedarse con un número que contenga los 3 dígitos funcinales para los displays
   int intTemp = (int)(valorTemp*10);
